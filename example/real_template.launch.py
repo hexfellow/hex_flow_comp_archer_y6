@@ -22,8 +22,10 @@ nodes = {
     "robot_archer_y6":
     default_robot_archer_y6_node(
         name="robot_archer_y6",
-        host="172.18.23.197",
-        port=8439,
+        # host="172.18.23.197",
+        # port=8439,
+        host="172.18.27.26",
+        port=9439,
         ctrl_rate=500,
         state_buffer_size=200,
         sens_ts=True,

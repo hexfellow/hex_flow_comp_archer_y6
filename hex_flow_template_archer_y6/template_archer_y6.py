@@ -198,7 +198,7 @@ class HexFlowTemplateArcherY6:
                 "grip_ctrl",
                 build_hex_grip_ctrl(
                     ts_ns=ns_now(),
-                    ctrl_mode=HexGripCtrlMode.mit,
+                    ctrl_mode=HexGripCtrlMode.comp,
                     jnt_pos=np.zeros(1),
                     jnt_vel=np.zeros(1),
                     mit_tau=np.zeros(1),
