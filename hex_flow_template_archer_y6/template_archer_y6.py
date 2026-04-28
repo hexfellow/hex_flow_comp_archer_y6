@@ -54,19 +54,19 @@ class HexFlowTemplateArcherY6:
 
     def __init_threads(self):
         self.__stop_event = threading.Event()
-        self.__teleop_thread = threading.Thread(target=self.teleop_process)
+        self.__teleop_thread = threading.Thread(target=self.__teleop_process)
 
-    def is_running(self):
+    def __is_running(self):
         return self.__node.is_working() and not self.__stop_event.is_set()
 
     def start(self):
         self.__stop_event.clear()
         self.__teleop_thread.start()
-        self.init_process()
+        self.__init_process()
 
     def run(self):
         try:
-            self.work_process()
+            self.__work_process()
         except KeyboardInterrupt:
             pass
         except Exception:
@@ -77,16 +77,16 @@ class HexFlowTemplateArcherY6:
     def stop(self):
         self.__stop_event.set()
         self.__teleop_thread.join()
-        self.exit_process()
+        self.__exit_process()
         self.__node.stop()
 
     ##############################################################
-    # the function you need to implement
+    # Work Related Functions
     ##############################################################
-    def teleop_process(self):
+    def __teleop_process(self):
         prev_q = 0
         rate = HexRate(100.0)
-        while self.is_running():
+        while self.__is_running():
             rate.sleep()
 
             data = self.__node.get("keys")
@@ -100,7 +100,7 @@ class HexFlowTemplateArcherY6:
                 self.__stop_event.set()
             prev_q = curr_q
 
-    def init_process(self):
+    def __init_process(self):
         try:
             self.__node.info(f"[{self.__name}]: move to init position")
             rate = HexRate(self._rate_hz)
@@ -138,7 +138,7 @@ class HexFlowTemplateArcherY6:
         except Exception:
             traceback.print_exc()
 
-    def exit_process(self):
+    def __exit_process(self):
         try:
             self.__node.info(f"[{self.__name}]: move to exit position")
             rate = HexRate(self._rate_hz)
@@ -176,10 +176,10 @@ class HexFlowTemplateArcherY6:
         except Exception:
             traceback.print_exc()
 
-    def work_process(self):
+    def __work_process(self):
         self.__node.info(f"[{self.__name}]: Start")
         rate = HexRate(self._rate_hz)
-        while self.is_running():
+        while self.__is_running():
             rate.sleep()
 
             self.__node.pub(
