@@ -1,15 +1,15 @@
-<h1 align="center">HEX FLOW TEMPLATE ARCHER Y6</h1>
+<h1 align="center">HEX FLOW COMP ARCHER Y6</h1>
 
 <p align="center">
-    <a href="https://github.com/hexfellow/hex_flow_template_archer_y6/stargazers">
-        <img src="https://img.shields.io/github/stars/hexfellow/hex_flow_template_archer_y6?style=flat-square&logo=github" />
+    <a href="https://github.com/hexfellow/hex_flow_comp_archer_y6/stargazers">
+        <img src="https://img.shields.io/github/stars/hexfellow/hex_flow_comp_archer_y6?style=flat-square&logo=github" />
     </a>
-    <a href="https://github.com/hexfellow/hex_flow_template_archer_y6/forks">
-        <img src="https://img.shields.io/github/forks/hexfellow/hex_flow_template_archer_y6?style=flat-square&logo=github" />
+    <a href="https://github.com/hexfellow/hex_flow_comp_archer_y6/forks">
+        <img src="https://img.shields.io/github/forks/hexfellow/hex_flow_comp_archer_y6?style=flat-square&logo=github" />
     </a>
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://github.com/hexfellow/hex_flow_template_archer_y6/issues">
-        <img src="https://img.shields.io/github/issues/hexfellow/hex_flow_template_archer_y6?style=flat-square&logo=github" />
+    <a href="https://github.com/hexfellow/hex_flow_comp_archer_y6/issues">
+        <img src="https://img.shields.io/github/issues/hexfellow/hex_flow_comp_archer_y6?style=flat-square&logo=github" />
     </a>
 </p>
 
@@ -17,52 +17,58 @@
 
 # 📖 Overview
 
-## What is `hex_flow_template_archer_y6`
+## What is `hex_flow_comp_archer_y6`
 
-`hex_flow_template_archer_y6` provides a ready-to-use Archer Y6 control template built on the hex-flow framework. It orchestrates the Archer Y6 robot arm with a three-phase lifecycle — **init**, **work**, and **exit** — enabling seamless integration of real or simulated Archer Y6 hardware with keyboard teleoperation.
+`hex_flow_comp_archer_y6` provides a gravity compensation controller for the Archer Y6 robot arm built on the hex-flow framework. It orchestrates the Archer Y6 with a three-phase lifecycle — **init**, **work**, and **exit** — enabling safe deployment with real or simulated hardware, keyboard-triggered recording, and MCAP data logging.
 
 ### Core lifecycle
 
-1. **Init phase** — On startup, the template commands the arm and gripper to move to a configurable stable position, waiting until the robot arrives within a configurable error threshold.
-2. **Work phase** — Once at the stable position, the template switches to **compensation mode**, publishing zero-torque compensation commands every control cycle, keeping the arm in a gravity-compensated state ready for manipulation.
-3. **Exit phase** — On shutdown (triggered by pressing the `q` key or `Ctrl+C`), the template commands the arm back to the stable position before exiting cleanly.
+1. **Init phase** — On startup, the controller commands the arm and gripper to move to a configurable stable position using position control, waiting until the robot arrives within a configurable error threshold.
+2. **Work phase** — Once at the stable position, the controller switches to **compensation mode**, computing a feedforward gravity-compensation torque via the robot's Jacobian and dynamics model. This counteracts the gravitational load of a configurable extra mass, making the arm backdrivable and freely movable.
+3. **Exit phase** — On shutdown (triggered by the `q` key, `s` key, or `Ctrl+C`), the controller returns the arm to the stable position before exiting cleanly.
 
 ## What problem it solves
 
-- **Out-of-the-box control flow**: Provides a standard life cycle (init → work → exit) for Archer Y6, eliminating the need to write boilerplate state machine logic.
-- **Graceful shutdown**: Handles both keyboard-triggered (`q` key) and signal-based (`Ctrl+C`) shutdown, automatically returning the arm to a safe stable position.
-- **Flexible deployment**: Supports both real robot hardware (via `hex_flow_node_robot`) and MuJoCo simulation (via `hex_flow_node_mujoco`) — just swap the robot source with zero code changes to the template.
-- **Keyboard teleop integration**: Subscribes to keyboard events via `hex_flow_node_teleop`, enabling a `q`-key shutdown mechanism.
+- **Gravity compensation for backdrivability**: Computes `τ = Jᵀ · F_ext` using the robot's dynamics model, where `F_ext` accounts for gravity acting on a configurable extra mass (e.g., a payload or end effector). This allows the arm to be freely manipulated by hand in a safe, gravity-compensated state.
+- **Out-of-the-box control flow**: Provides a standard lifecycle (init → work → exit) for Archer Y6, eliminating boilerplate state machine logic.
+- **Graceful shutdown**: Handles keyboard-triggered (`q` key), recording-toggle (`s` key), and signal-based (`Ctrl+C`) shutdown, automatically returning the arm to a safe stable position.
+- **Flexible deployment**: Supports both real robot hardware (via `hex_flow_node_robot`) and MuJoCo simulation (via `hex_flow_node_mujoco`) — just swap the robot source with zero code changes to the controller.
+- **Integrated data recording**: Publishes a `record` boolean topic that can be consumed by `hex_flow_node_data` for MCAP-based data logging, toggled by the `s` key.
 
 ## Target users
 
-- Engineers deploying Archer Y6 robot arms in automated systems who need a quick-start control loop.
+- Engineers deploying Archer Y6 robot arms who need gravity compensation for manual guidance or collaborative applications.
 - Developers and researchers prototyping on Archer Y6 and transitioning from simulation to real hardware.
-- Users of the hex-flow framework looking for a reference implementation of a robot control node.
+- Users of the hex-flow framework looking for a reference implementation of a gravity compensation control node.
 
 ## Nodes
 
-| Node                              | Description                              | Publishes                 | Subscribes                          |
-| --------------------------------- | ---------------------------------------- | ------------------------- | ----------------------------------- |
-| `hex-flow-template-archer-y6`     | Archer Y6 control template               | `arm_ctrl`, `grip_ctrl`   | `arm_state`, `grip_state`, `keys`   |
+| Node                          | Description                                   | Publishes                        | Subscribes                                   |
+| ----------------------------- | --------------------------------------------- | -------------------------------- | -------------------------------------------- |
+| `hex-flow-comp-archer-y6`     | Archer Y6 gravity compensation controller     | `arm_ctrl`, `grip_ctrl`, `record` | `arm_state`, `grip_state`, `keys`            |
 
 ## Architecture diagram
 
 ```
 ┌─────────────────┐     arm_state / grip_state     ┌──────────────────────────┐
-│  Robot Source   │ ──────────────────────────────> │  hex-flow-template-      │
-│ (real or MuJoCo)│                                 │  archer-y6               │
+│  Robot Source   │ ──────────────────────────────> │  hex-flow-comp-archer-   │
+│ (real or MuJoCo)│                                 │  y6                      │
 │                 │ <────────────────────────────── │                          │
 └─────────────────┘     arm_ctrl / grip_ctrl        └──────────────────────────┘
-                                                              ▲
-                                                              │ keys
-                                                              │
-                                                      ┌───────┴────────┐
-                                                      │ teleop_keyboard │
-                                                      └────────────────┘
+                                                              ▲          │
+                                                              │ keys     │ record
+                                                              │          │
+                                                      ┌───────┴────────┐ │
+                                                      │ teleop_keyboard │ │
+                                                      └────────────────┘ │
+                                                                         │
+                                                                         ▼
+                                                                ┌────────────────┐
+                                                                │  data_record   │
+                                                                └────────────────┘
 ```
 
-The template sits between a robot source (either `hex-flow-robot-archer-y6` for real hardware or `hex-flow-mujoco-archer-y6` for MuJoCo simulation) and a teleop keyboard node. It subscribes to robot state topics and keyboard events, and publishes control commands back to the robot source.
+The controller sits between a robot source (either `hex-flow-robot-archer-y6` for real hardware or `hex-flow-mujoco-archer-y6` for MuJoCo simulation) and a teleop keyboard node. It subscribes to robot state topics and keyboard events, publishes control commands back to the robot source, and emits a `record` trigger for the data recording node.
 
 # 📦 Installation
 
@@ -70,10 +76,10 @@ The template sits between a robot source (either `hex-flow-robot-archer-y6` for 
 
 - **Python** >= 3.10
 - **Core dependencies**:
-  - `hex_flow_core` >= 0.0.0, < 0.1.0
   - `hex_flow_node_robot` >= 0.0.0, < 0.1.0
   - `hex_flow_node_teleop` >= 0.0.0, < 0.1.0
   - `hex_flow_node_mujoco` >= 0.0.0, < 0.1.0
+  - `hex_flow_node_data` >= 0.0.0, < 0.1.0
 
 ## Install `hex-flow-cli`
 
@@ -93,7 +99,7 @@ curl -fsSL https://raw.githubusercontent.com/hexfellow/hex-flow/main/install.sh 
 
 For other systems, please install `zenohd` yourself, then run the [install script](https://raw.githubusercontent.com/hexfellow/hex-flow/main/install.sh).
 
-## Install `hex-flow-template-archer-y6` from source
+## Install `hex-flow-comp-archer-y6` from source
 
 We provide a [venv.sh](venv.sh) script to create a virtual environment with all dependencies installed. However, you need to install uv first. For uv installation, please refer to `uv` official [installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
@@ -104,29 +110,34 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then you can use [venv.sh](venv.sh) to create a virtual environment with all dependencies installed:
 
 ```bash
-git clone https://github.com/hexfellow/hex_flow_template_archer_y6.git
-cd hex_flow_template_archer_y6
+git clone https://github.com/hexfellow/hex_flow_comp_archer_y6.git
+cd hex_flow_comp_archer_y6
 ./venv.sh
 ```
 
 # 📑 Python Config API
 
-The package provides the `default_template_archer_y6_node` helper function that returns a `NodeConfig` object for easy integration into your `LaunchConfig`.
+The package provides the `default_comp_archer_y6_node` helper function that returns a `NodeConfig` object for easy integration into your `LaunchConfig`.
 
 ## Real robot launch
 
 ```python
+import os
 from hex_flow_core import LaunchConfig
 from hex_flow_node_robot import default_robot_archer_y6_node
 from hex_flow_node_teleop import default_teleop_keyboard_node
-from hex_flow_template_archer_y6 import default_template_archer_y6_node
+from hex_flow_node_data import default_data_record_node
+from hex_flow_comp_archer_y6 import default_comp_archer_y6_node
 
 config = LaunchConfig(
     local_only=True,
     enable_tui=True,
     log_to_file=True,
-    save_path="/tmp/real_template.yml",
+    save_path="/tmp/real_comp.yml",
 )
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RECORD_PATH = f"{SCRIPT_DIR}/record_data"
 
 nodes = {
     "robot_archer_y6":
@@ -137,7 +148,7 @@ nodes = {
         ctrl_rate=500,
         state_buffer_size=200,
         sens_ts=True,
-        grip_type="gp80",
+        grip_type="gp80_handle",
         pose_end_in_flange="0.187,0.0,0.0,1.0,0.0,0.0,0.0",
         required=True,
         hidden=True,
@@ -157,14 +168,15 @@ nodes = {
         hidden=True,
         remap_dict={"teleop_keyboard": "teleop_keyboard/teleop_keyboard"},
     ),
-    "template_archer_y6":
-    default_template_archer_y6_node(
-        name="template_archer_y6",
+    "comp_archer_y6":
+    default_comp_archer_y6_node(
+        name="comp_archer_y6",
         rate_hz=500.0,
         arm_stable_pos="0.0,-1.5,3.0,0.07,0.0,0.0",
         grip_stable_pos="0.5",
         arrive_threshold=0.06,
         err_threshold=0.02,
+        extra_mass=0.25,
         required=True,
         hidden=False,
         remap_dict={
@@ -173,6 +185,23 @@ nodes = {
             "arm_ctrl": "robot_archer_y6/arm_ctrl",
             "grip_ctrl": "robot_archer_y6/grip_ctrl",
             "keys": "teleop_keyboard/teleop_keyboard",
+            "record": "comp_archer_y6/record",
+        },
+    ),
+    "data_record":
+    default_data_record_node(
+        name="data_record",
+        record_path=RECORD_PATH,
+        foxglove_host="127.0.0.1",
+        foxglove_port=8765,
+        start_cnt=0,
+        required=False,
+        remap_dict={
+            "arm_state": "robot_archer_y6/arm_state",
+            "grip_state": "robot_archer_y6/grip_state",
+            "arm_ctrl": "robot_archer_y6/arm_ctrl",
+            "grip_ctrl": "robot_archer_y6/grip_ctrl",
+            "record": "comp_archer_y6/record",
         },
     ),
 }
@@ -184,17 +213,22 @@ print(config.export())
 ## MuJoCo simulation launch
 
 ```python
+import os
 from hex_flow_core import LaunchConfig
 from hex_flow_node_mujoco import default_mujoco_archer_y6_node
 from hex_flow_node_teleop import default_teleop_keyboard_node
-from hex_flow_template_archer_y6 import default_template_archer_y6_node
+from hex_flow_node_data import default_data_record_node
+from hex_flow_comp_archer_y6 import default_comp_archer_y6_node
 
 config = LaunchConfig(
     local_only=True,
     enable_tui=True,
     log_to_file=True,
-    save_path="/tmp/sim_template.yml",
+    save_path="/tmp/sim_comp.yml",
 )
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RECORD_PATH = f"{SCRIPT_DIR}/record_data"
 
 nodes = {
     "mujoco_archer_y6":
@@ -226,14 +260,15 @@ nodes = {
         hidden=True,
         remap_dict={"teleop_keyboard": "teleop_keyboard/teleop_keyboard"},
     ),
-    "template_archer_y6":
-    default_template_archer_y6_node(
-        name="template_archer_y6",
+    "comp_archer_y6":
+    default_comp_archer_y6_node(
+        name="comp_archer_y6",
         rate_hz=500.0,
         arm_stable_pos="0.0,-1.5,3.0,0.07,0.0,0.0",
         grip_stable_pos="0.5",
         arrive_threshold=0.06,
         err_threshold=0.02,
+        extra_mass=0.25,
         required=True,
         hidden=False,
         remap_dict={
@@ -242,6 +277,23 @@ nodes = {
             "arm_ctrl": "mujoco_archer_y6/arm_ctrl",
             "grip_ctrl": "mujoco_archer_y6/grip_ctrl",
             "keys": "teleop_keyboard/teleop_keyboard",
+            "record": "comp_archer_y6/record",
+        },
+    ),
+    "data_record":
+    default_data_record_node(
+        name="data_record",
+        record_path=RECORD_PATH,
+        foxglove_host="127.0.0.1",
+        foxglove_port=8765,
+        start_cnt=0,
+        required=False,
+        remap_dict={
+            "arm_state": "mujoco_archer_y6/arm_state",
+            "grip_state": "mujoco_archer_y6/grip_state",
+            "arm_ctrl": "mujoco_archer_y6/arm_ctrl",
+            "grip_ctrl": "mujoco_archer_y6/grip_ctrl",
+            "record": "comp_archer_y6/record",
         },
     ),
 }
@@ -250,11 +302,11 @@ config.set_nodes(nodes)
 print(config.export())
 ```
 
-### `default_template_archer_y6_node`
+### `default_comp_archer_y6_node`
 
 | Parameter          | Type    | Default                                          | Description                                         |
 | ------------------ | ------- | ------------------------------------------------ | --------------------------------------------------- |
-| `name`             | `str`   | `"template_archer_y6"`                           | Node name and remap prefix                          |
+| `name`             | `str`   | `"comp_archer_y6"`                               | Node name and remap prefix                          |
 | `rate_hz`          | `float` | `500.0`                                          | Control loop rate in Hz                             |
 | `arm_stable_pos`   | `str`   | `"0.0,-1.5,3.0,0.07,0.0,0.0"`                   | Arm stable joint position (6-DOF comma-separated)   |
 | `grip_stable_pos`  | `str`   | `"0.5"`                                          | Gripper stable position                             |
@@ -263,7 +315,8 @@ print(config.export())
 | `grip_kp`          | `str`   | `"10.0"`                                          | Gripper stiffness gain                              |
 | `grip_kd`          | `str`   | `"0.5"`                                           | Gripper damping gain                                |
 | `arrive_threshold` | `float` | `0.06`                                           | Joint position threshold (rad) to consider arrived  |
-| `err_threshold`    | `float` | `0.02`                                           | Position error limit for safety (lim_err)           |
+| `err_threshold`    | `float` | `0.02`                                           | Position error limit for safety (`lim_err`)         |
+| `extra_mass`       | `float` | `0.1`                                            | Extra mass (kg) for gravity compensation            |
 | `required`         | `bool`  | `True`                                           | Required for launch                                 |
 | `hidden`           | `bool`  | `False`                                          | Hidden node                                         |
 | `remap_dict`       | `dict`  | `None`                                           | Custom remap; defaults to `{robot_source}/*`        |
@@ -278,14 +331,14 @@ Ready-to-run config scripts are provided in the [`example/`](example/) directory
 
 ```bash
 # 500 Hz control loop with real Archer Y6 hardware
-hexflow run example/real_template.launch.py
+hexflow run example/real_comp.launch.py
 ```
 
 ### MuJoCo simulation
 
 ```bash
 # 500 Hz control loop with MuJoCo simulated Archer Y6
-hexflow run example/sim_template.launch.py
+hexflow run example/sim_comp.launch.py
 ```
 
 # YAML Examples
@@ -310,7 +363,7 @@ nodes:
       CTRL_RATE: "500"
       STATE_BUFFER_SIZE: "200"
       SEN_TS: "True"
-      GRIP_TYPE: "gp80"
+      GRIP_TYPE: "gp80_handle"
       POSE_END_IN_FLANGE: "0.187,0.0,0.0,1.0,0.0,0.0,0.0"
 
   - name: teleop_keyboard
@@ -323,16 +376,18 @@ nodes:
     env:
       DEVICE_PATH: ""
 
-  - name: template_archer_y6
-    build: pip install hex_flow_template_archer_y6
-    run: hex-flow-template-archer-y6
+  - name: comp_archer_y6
+    build: pip install hex_flow_comp_archer_y6
+    run: hex-flow-comp-archer-y6
     required: true
+    hidden: false
     remap:
       arm_state: robot_archer_y6/arm_state
       grip_state: robot_archer_y6/grip_state
       arm_ctrl: robot_archer_y6/arm_ctrl
       grip_ctrl: robot_archer_y6/grip_ctrl
       keys: teleop_keyboard/teleop_keyboard
+      record: comp_archer_y6/record
     env:
       RATE_HZ: "500"
       ARM_STABLE_POS: "0.0,-1.5,3.0,0.07,0.0,0.0"
@@ -343,6 +398,23 @@ nodes:
       GRIP_KD: "0.5"
       ARRIVE_THRESHOLD: "0.06"
       ERR_THRESHOLD: "0.02"
+      EXTRA_MASS: "0.25"
+
+  - name: data_record
+    build: pip install hex_flow_node_data
+    run: hex-flow-data-record
+    required: false
+    hidden: false
+    remap:
+      arm_state: robot_archer_y6/arm_state
+      grip_state: robot_archer_y6/grip_state
+      arm_ctrl: robot_archer_y6/arm_ctrl
+      grip_ctrl: robot_archer_y6/grip_ctrl
+      record: comp_archer_y6/record
+    env:
+      RECORD_PATH: "example/record_data"
+      FOXGLOVE_HOST: "127.0.0.1"
+      FOXGLOVE_PORT: "8765"
 ```
 
 ### MuJoCo simulation (500 Hz)
@@ -379,16 +451,18 @@ nodes:
     env:
       DEVICE_PATH: ""
 
-  - name: template_archer_y6
-    build: pip install hex_flow_template_archer_y6
-    run: hex-flow-template-archer-y6
+  - name: comp_archer_y6
+    build: pip install hex_flow_comp_archer_y6
+    run: hex-flow-comp-archer-y6
     required: true
+    hidden: false
     remap:
       arm_state: mujoco_archer_y6/arm_state
       grip_state: mujoco_archer_y6/grip_state
       arm_ctrl: mujoco_archer_y6/arm_ctrl
       grip_ctrl: mujoco_archer_y6/grip_ctrl
       keys: teleop_keyboard/teleop_keyboard
+      record: comp_archer_y6/record
     env:
       RATE_HZ: "500"
       ARM_STABLE_POS: "0.0,-1.5,3.0,0.07,0.0,0.0"
@@ -399,11 +473,28 @@ nodes:
       GRIP_KD: "0.5"
       ARRIVE_THRESHOLD: "0.06"
       ERR_THRESHOLD: "0.02"
+      EXTRA_MASS: "0.25"
+
+  - name: data_record
+    build: pip install hex_flow_node_data
+    run: hex-flow-data-record
+    required: false
+    hidden: false
+    remap:
+      arm_state: mujoco_archer_y6/arm_state
+      grip_state: mujoco_archer_y6/grip_state
+      arm_ctrl: mujoco_archer_y6/arm_ctrl
+      grip_ctrl: mujoco_archer_y6/grip_ctrl
+      record: comp_archer_y6/record
+    env:
+      RECORD_PATH: "example/record_data"
+      FOXGLOVE_HOST: "127.0.0.1"
+      FOXGLOVE_PORT: "8765"
 ```
 
 # Message Types (FlatBuffer)
 
-This template publishes and subscribes to the same FlatBuffer message types as the Archer Y6 robot driver from `hex_flow_node_robot`. All topics use FlatBuffer messages from `hex_util_msg.msg_robot`.
+This controller publishes and subscribes to the same FlatBuffer message types as the Archer Y6 robot driver from `hex_flow_node_robot`. All topics use FlatBuffer messages from `hex_util_msg.msg_robot`.
 
 ## Subscribed Topics
 
@@ -434,6 +525,7 @@ This template publishes and subscribes to the same FlatBuffer message types as t
 | `ts_ns`     | `int64`   | Timestamp in nanoseconds                 |
 | `action`    | `uint8`   | Action type (press / release)            |
 | `key_q`     | `bool`    | Q key state                              |
+| `key_s`     | `bool`    | S key state                              |
 | `key_w`     | `bool`    | W key state                              |
 | ...         | `...`     | ...                                      |
 
@@ -449,6 +541,7 @@ This template publishes and subscribes to the same FlatBuffer message types as t
 | `ctrl_mode` | `uint8`   | Control mode enum (`pos` during init/exit, `comp` during work) |
 | `jnt_pos`   | `float64` | Target joint positions                         |
 | `jnt_vel`   | `float64` | Target joint velocities                        |
+| `mit_tau`   | `float64` | Feedforward torque (gravity compensation during work) |
 | `mit_kp`    | `float64` | Stiffness gains                                |
 | `mit_kd`    | `float64` | Damping gains                                  |
 | `lim_err`   | `float64` | Position error limit for safety                |
@@ -461,11 +554,19 @@ This template publishes and subscribes to the same FlatBuffer message types as t
 | `ctrl_mode` | `uint8`   | Control mode enum (`pos` during init/exit, `comp` during work) |
 | `jnt_pos`   | `float64` | Target gripper position                        |
 | `jnt_vel`   | `float64` | Target gripper velocity                        |
+| `mit_tau`   | `float64` | Feedforward torque                             |
 | `mit_kp`    | `float64` | Stiffness gains                                |
 | `mit_kd`    | `float64` | Damping gains                                  |
 | `lim_err`   | `float64` | Position error limit for safety                |
 
-Schema: [`msgs/msg_robot/arm_ctrl.fbs`](https://github.com/hexfellow/hex_util_msg/blob/main/msgs/msg_robot/arm_ctrl.fbs) | [`msgs/msg_robot/grip_ctrl.fbs`](https://github.com/hexfellow/hex_util_msg/blob/main/msgs/msg_robot/grip_ctrl.fbs)
+### `record` — `HexBool`
+
+| Field   | Type    | Description                             |
+| ------- | ------- | --------------------------------------- |
+| `ts_ns` | `int64` | Timestamp in nanoseconds                |
+| `data`  | `bool`  | Recording trigger (toggle start/stop)   |
+
+Schemas: [`msgs/msg_robot/arm_ctrl.fbs`](https://github.com/hexfellow/hex_util_msg/blob/main/msgs/msg_robot/arm_ctrl.fbs) | [`msgs/msg_robot/grip_ctrl.fbs`](https://github.com/hexfellow/hex_util_msg/blob/main/msgs/msg_robot/grip_ctrl.fbs) | [`msgs/msg_basic/bool.fbs`](https://github.com/hexfellow/hex_util_msg/blob/main/msgs/msg_basic/bool.fbs)
 
 # Environment Variables
 
@@ -477,7 +578,7 @@ Schema: [`msgs/msg_robot/arm_ctrl.fbs`](https://github.com/hexfellow/hex_util_ms
 | `HEX_FLOW_REMAP`     | `str` | `{}`            | JSON dict for topic remapping (handled by `hex_flow_core`) |
 | `RUST_LOG`           | `str` | `info`          | Log level for `envlog`                                     |
 
-## Template Node (`hex-flow-template-archer-y6`)
+## Comp Controller Node (`hex-flow-comp-archer-y6`)
 
 | Variable           | Type    | Default                                          | Description                                         |
 | ------------------ | ------- | ------------------------------------------------ | --------------------------------------------------- |
@@ -490,22 +591,33 @@ Schema: [`msgs/msg_robot/arm_ctrl.fbs`](https://github.com/hexfellow/hex_util_ms
 | `GRIP_KD`          | `str`   | `"0.5"`                                           | Gripper damping gain                                |
 | `ARRIVE_THRESHOLD` | `float` | `0.06`                                           | Joint position threshold (rad) to consider arrived  |
 | `ERR_THRESHOLD`    | `float` | `0.02`                                           | Position error limit for safety (`lim_err`)         |
+| `EXTRA_MASS`       | `float` | `0.1`                                            | Extra mass (kg) for gravity compensation            |
 
 # Architecture
 
-The template node implements a three-phase lifecycle:
+The compensation controller node implements a three-phase lifecycle:
 
-1. **Parameter construction** — reads environment variables and configures the template parameters: control rate, stable positions, PID gains, and arrival/error thresholds.
+1. **Parameter construction** — reads environment variables and configures the controller parameters: control rate, stable positions, PID gains, extra mass, and arrival/error thresholds.
 
-2. **Subscription setup** — subscribes to `arm_state`, `grip_state` (from the robot source), and `keys` (from the teleop keyboard node). It publishes `arm_ctrl` and `grip_ctrl` commands back to the robot source.
+2. **Dynamics initialization** — creates a `HexDynUtilY6` dynamics utility using the `archer_y6_empty` URDF model. Computes the gravity vector for the configured extra mass: `F_ext = -mass · g`, which will be used during the work phase to generate feedforward compensation torque.
 
-3. **Init phase** — On `start()`, a teleop monitor thread begins polling the `keys` topic at 100 Hz. The main loop then enters the init phase, publishing position-mode (`HexArmCtrlMode.pos`) commands targeting the configured `arm_stable_pos` and `grip_stable_pos`. It waits until all joints are within `arrive_threshold` radians of the target.
+3. **Subscription setup** — subscribes to `arm_state`, `grip_state` (from the robot source), and `keys` (from the teleop keyboard node). It publishes `arm_ctrl`, `grip_ctrl` commands back to the robot source, and a `record` boolean topic for the data recording node.
 
-4. **Work phase** — Once the robot has arrived at the stable position, the template switches to compensation mode (`HexArmCtrlMode.comp`), publishing zero-vector commands each cycle. This keeps the arm in a gravity-compensated, freely movable state.
+4. **Init phase** — On `start()`, a teleop monitor thread begins polling the `keys` topic at 100 Hz. The main loop then enters the init phase, publishing position-mode (`HexArmCtrlMode.pos`) commands targeting the configured `arm_stable_pos` and `grip_stable_pos`. It waits until all joints are within `arrive_threshold` radians of the target.
 
-5. **Exit phase** — When the `q` key is pressed (detected by the teleop thread) or `Ctrl+C` is received, the template re-enters the position-mode control loop, driving the arm back to `arm_stable_pos` / `grip_stable_pos` before stopping the node. This ensures a safe, repeatable shutdown.
+5. **Work phase** — Once the robot has arrived at the stable position, the controller switches to compensation mode (`HexArmCtrlMode.comp`). In this phase, it:
+   - Reads the current joint positions `q` and velocities `dq` from `arm_state`
+   - Computes the Jacobian `J` (position part, 3×6) using the robot's dynamics model
+   - Calculates the feedforward gravity-compensation torque: `τ = Jᵀ · F_ext`
+   - Publishes the compensation command with `mit_tau` set to the computed torque, and zero position/velocity targets, stiffness, and damping
 
-This architecture decouples the template's lifecycle logic from the underlying robot hardware interface — the template interacts solely through Zenoh topics, making it compatible with both real Archer Y6 hardware and MuJoCo simulation without code changes.
+   This keeps the arm in a gravity-compensated, freely movable state — the extra mass payload is counteracted so the arm can be backdriven by hand.
+
+6. **Teleop recording** — The teleop thread also handles the `s` key as a toggle for recording. Each press of `s` publishes a `HexBool` on the `record` topic, which the `data_record` node subscribes to for starting/stopping MCAP data logging.
+
+7. **Exit phase** — When the `q` key is pressed (detected by the teleop thread) or `Ctrl+C` is received, the controller re-enters the position-mode control loop, driving the arm back to `arm_stable_pos` / `grip_stable_pos` before stopping the node. This ensures a safe, repeatable shutdown.
+
+This architecture decouples the controller's compensation logic from the underlying robot hardware interface — the controller interacts solely through Zenoh topics, making it compatible with both real Archer Y6 hardware and MuJoCo simulation without code changes.
 
 # 📄 License
 
@@ -513,10 +625,10 @@ Apache License 2.0. See [LICENSE](LICENSE).
 
 # 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=hexfellow/hex_flow_template_archer_y6&type=Date)](https://star-history.com/#hexfellow/hex_flow_template_archer_y6&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=hexfellow/hex_flow_comp_archer_y6&type=Date)](https://star-history.com/#hexfellow/hex_flow_comp_archer_y6&Date)
 
 # 👥 Contributors
 
-<a href="https://github.com/hexfellow/hex_flow_template_archer_y6/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=hexfellow/hex_flow_template_archer_y6" />
+<a href="https://github.com/hexfellow/hex_flow_comp_archer_y6/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=hexfellow/hex_flow_comp_archer_y6" />
 </a>
