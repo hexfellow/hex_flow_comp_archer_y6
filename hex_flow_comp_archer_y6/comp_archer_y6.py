@@ -17,15 +17,19 @@ from hex_util_msg.builder_robot import (build_hex_arm_ctrl,
                                         build_hex_grip_ctrl,
                                         parse_hex_arm_state)
 from hex_util_msg.builder_teleop import parse_hex_teleop_keyboard
+from hex_util_msg.builder_basic import build_hex_bool
+from hex_util_urdf import HEXARM_URDF_PATH_DICT
+from hex_util_robot import HexDynUtilY6
 
 
-class HexFlowTemplateArcherY6:
+class HexFlowCompArcherY6:
 
-    def __init__(self, name: str = "template_archer_y6"):
+    def __init__(self, name: str = "comp_archer_y6"):
         self.__name = name
         self.__node = Node(self.__name)
         self.__node.start()
         self.__init_params()
+        self.__init_vars()
         self.__init_subs()
         self.__init_pubs()
         self.__init_threads()
@@ -33,19 +37,28 @@ class HexFlowTemplateArcherY6:
     def __init_params(self):
         self.__rate_hz = get_env_float("RATE_HZ", 10.0)
         self.__arm_stable_pos = get_env_ndarray("ARM_STABLE_POS",
-                                               "0.0,-1.5,3.0,0.07,0.0,0.0")
+                                                "0.0,-1.5,3.0,0.07,0.0,0.0")
         self.__grip_stable_pos = get_env_ndarray("GRIP_STABLE_POS", "0.5")
         self.__arm_kp = get_env_ndarray("ARM_KP",
-                                       "200.0,200.0,250.0,150.0,100.0,100.0")
+                                        "200.0,200.0,250.0,150.0,100.0,100.0")
         self.__arm_kd = get_env_ndarray("ARM_KD", "5.0,5.0,5.0,5.0,2.0,2.0")
         self.__grip_kp = get_env_ndarray("GRIP_KP", "10.0")
         self.__grip_kd = get_env_ndarray("GRIP_KD", "0.5")
         self.__arrive_threshold = get_env_float("ARRIVE_THRESHOLD", 0.06)
         self.__err_threshold = get_env_float("ERR_THRESHOLD", 0.02)
+        self.__extra_mass = get_env_float("EXTRA_MASS", 0.1)
+
+    def __init_vars(self):
+        self.__dyn_util = HexDynUtilY6(
+            model_path=HEXARM_URDF_PATH_DICT["archer_y6_empty"],
+            pose_end_in_flange=np.array([0.02, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+        )
+        self.__extra_force = -self.__dyn_util.get_gravity() * self.__extra_mass
 
     def __init_pubs(self):
         self.__node.create_pub("arm_ctrl")
         self.__node.create_pub("grip_ctrl")
+        self.__node.create_pub("record")
 
     def __init_subs(self):
         self.__node.create_sub("arm_state")
@@ -84,7 +97,8 @@ class HexFlowTemplateArcherY6:
     # Work Related Functions
     ##############################################################
     def __teleop_process(self):
-        prev_q = 0
+        prev_q, prev_s = 0, 0
+        is_record = False
         rate = HexRate(100.0)
         while self.__is_running():
             rate.sleep()
@@ -94,11 +108,19 @@ class HexFlowTemplateArcherY6:
                 continue
 
             keys = parse_hex_teleop_keyboard(data)
-            curr_q = keys["key_q"]
+            curr_q, curr_s = keys["key_q"], keys["key_s"]
             if curr_q and not prev_q:
                 self.__node.info(f"[{self.__name}]: Stop and exit")
                 self.__stop_event.set()
-            prev_q = curr_q
+            if curr_s and not prev_s:
+                is_record = not is_record
+                self.__node.pub(
+                    "record", build_hex_bool(ts_ns=ns_now(), data=is_record))
+                if is_record:
+                    self.__node.info(f"[{self.__name}]: Start recording")
+                else:
+                    self.__node.info(f"[{self.__name}]: Stop recording")
+            prev_q, prev_s = curr_q, curr_s
 
     def __init_process(self):
         try:
@@ -182,27 +204,35 @@ class HexFlowTemplateArcherY6:
         while self.__is_running():
             rate.sleep()
 
-            self.__node.pub(
-                "arm_ctrl",
-                build_hex_arm_ctrl(
-                    ts_ns=ns_now(),
-                    ctrl_mode=HexArmCtrlMode.comp,
-                    jnt_pos=np.zeros(6),
-                    jnt_vel=np.zeros(6),
-                    mit_tau=np.zeros(6),
-                    mit_kp=np.zeros(6),
-                    mit_kd=np.zeros(6),
-                ),
-            )
-            self.__node.pub(
-                "grip_ctrl",
-                build_hex_grip_ctrl(
-                    ts_ns=ns_now(),
-                    ctrl_mode=HexGripCtrlMode.comp,
-                    jnt_pos=np.zeros(1),
-                    jnt_vel=np.zeros(1),
-                    mit_tau=np.zeros(1),
-                    mit_kp=np.zeros(1),
-                    mit_kd=np.zeros(1),
-                ),
-            )
+            data = self.__node.get("arm_state", latest=True)
+            if data is not None:
+                state = parse_hex_arm_state(data)
+                q, dq = state["jnt_pos"], state["jnt_vel"]
+                jac = self.__dyn_util.dynamic_params(
+                    q, dq, base_frame=True)[3][:3, :6]
+                extra_tau = jac.T @ self.__extra_force
+
+                self.__node.pub(
+                    "arm_ctrl",
+                    build_hex_arm_ctrl(
+                        ts_ns=ns_now(),
+                        ctrl_mode=HexArmCtrlMode.comp,
+                        jnt_pos=np.zeros(6),
+                        jnt_vel=np.zeros(6),
+                        mit_tau=extra_tau,
+                        mit_kp=np.zeros(6),
+                        mit_kd=np.zeros(6),
+                    ),
+                )
+                self.__node.pub(
+                    "grip_ctrl",
+                    build_hex_grip_ctrl(
+                        ts_ns=ns_now(),
+                        ctrl_mode=HexGripCtrlMode.comp,
+                        jnt_pos=np.zeros(1),
+                        jnt_vel=np.zeros(1),
+                        mit_tau=np.zeros(1),
+                        mit_kp=np.zeros(1),
+                        mit_kd=np.zeros(1),
+                    ),
+                )

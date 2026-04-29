@@ -6,13 +6,13 @@
 # Date  : 2026-04-28
 ################################################################
 
-from .template_archer_y6 import HexFlowTemplateArcherY6
+from .comp_archer_y6 import HexFlowCompArcherY6
 
 
 def main():
-    template = HexFlowTemplateArcherY6()
-    template.start()
-    template.run()
+    comp = HexFlowCompArcherY6()
+    comp.start()
+    comp.run()
 
 
 if __name__ == "__main__":

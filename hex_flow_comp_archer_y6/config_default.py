@@ -8,15 +8,15 @@
 
 from hex_flow_core import NodeConfig
 
-_BUILD_CMD = "pip install hex_flow_template_archer_y6"
+_BUILD_CMD = "pip install hex_flow_comp_archer_y6"
 
 # ──────────────────────────────────────────────────────────────
 #  Comp Control
 # ──────────────────────────────────────────────────────────────
 
 
-def default_template_archer_y6_node(
-    name: str = "template_archer_y6",
+def default_comp_archer_y6_node(
+    name: str = "comp_archer_y6",
     rate_hz: float = 500.0,
     arm_stable_pos: str = "0.0,-1.5,3.0,0.07,0.0,0.0",
     grip_stable_pos: str = "0.5",
@@ -26,6 +26,7 @@ def default_template_archer_y6_node(
     grip_kd: str = "0.5",
     arrive_threshold: float = 0.06,
     err_threshold: float = 0.02,
+    extra_mass: float = 0.1,
     required: bool = True,
     hidden: bool = False,
     remap_dict: dict[str, str] | None = None,
@@ -44,7 +45,7 @@ def default_template_archer_y6_node(
     return NodeConfig(
         name=name,
         build_cmd=_BUILD_CMD,
-        run_cmd="hex-flow-template-archer-y6",
+        run_cmd="hex-flow-comp-archer-y6",
         required=required,
         hidden=hidden,
         remap_dict=remap_dict,
@@ -58,5 +59,6 @@ def default_template_archer_y6_node(
             "ARM_KD": arm_kd,
             "GRIP_KP": grip_kp,
             "GRIP_KD": grip_kd,
+            "EXTRA_MASS": str(extra_mass),
         },
     )

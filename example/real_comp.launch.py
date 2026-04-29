@@ -6,17 +6,22 @@
 # Date  : 2026-04-27
 ################################################################
 
+import os
 from hex_flow_core import LaunchConfig
 from hex_flow_node_robot import default_robot_archer_y6_node
 from hex_flow_node_teleop import default_teleop_keyboard_node
-from hex_flow_template_archer_y6 import default_template_archer_y6_node
+from hex_flow_node_data import default_data_record_node
+from hex_flow_comp_archer_y6 import default_comp_archer_y6_node
 
 config = LaunchConfig(
     local_only=True,
     enable_tui=True,
     log_to_file=True,
-    save_path="/tmp/real_template.yml",
+    save_path="/tmp/real_comp.yml",
 )
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RECORD_PATH = f"{SCRIPT_DIR}/record_data"
 
 nodes = {
     "robot_archer_y6":
@@ -29,7 +34,7 @@ nodes = {
         ctrl_rate=500,
         state_buffer_size=200,
         sens_ts=True,
-        grip_type="gp80",
+        grip_type="gp80_handle",
         pose_end_in_flange="0.187,0.0,0.0,1.0,0.0,0.0,0.0",
         required=True,
         hidden=True,
@@ -49,14 +54,15 @@ nodes = {
         hidden=True,
         remap_dict={"teleop_keyboard": "teleop_keyboard/teleop_keyboard"},
     ),
-    "template_archer_y6":
-    default_template_archer_y6_node(
-        name="template_archer_y6",
+    "comp_archer_y6":
+    default_comp_archer_y6_node(
+        name="comp_archer_y6",
         rate_hz=500.0,
         arm_stable_pos="0.0,-1.5,3.0,0.07,0.0,0.0",
         grip_stable_pos="0.5",
         arrive_threshold=0.06,
         err_threshold=0.02,
+        extra_mass=0.1,
         required=True,
         hidden=False,
         remap_dict={
@@ -65,6 +71,23 @@ nodes = {
             "arm_ctrl": "robot_archer_y6/arm_ctrl",
             "grip_ctrl": "robot_archer_y6/grip_ctrl",
             "keys": "teleop_keyboard/teleop_keyboard",
+            "record": "comp_archer_y6/record",
+        },
+    ),
+    "data_record":
+    default_data_record_node(
+        name="data_record",
+        record_path=RECORD_PATH,
+        foxglove_host="127.0.0.1",
+        foxglove_port=8765,
+        start_cnt=0,
+        required=False,
+        remap_dict={
+            "arm_state": "robot_archer_y6/arm_state",
+            "grip_state": "robot_archer_y6/grip_state",
+            "arm_ctrl": "robot_archer_y6/arm_ctrl",
+            "grip_ctrl": "robot_archer_y6/grip_ctrl",
+            "record": "comp_archer_y6/record",
         },
     ),
 }
