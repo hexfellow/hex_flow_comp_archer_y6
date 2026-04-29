@@ -31,17 +31,17 @@ class HexFlowTemplateArcherY6:
         self.__init_threads()
 
     def __init_params(self):
-        self._rate_hz = get_env_float("RATE_HZ", 10.0)
-        self._arm_stable_pos = get_env_ndarray("ARM_STABLE_POS",
+        self.__rate_hz = get_env_float("RATE_HZ", 10.0)
+        self.__arm_stable_pos = get_env_ndarray("ARM_STABLE_POS",
                                                "0.0,-1.5,3.0,0.07,0.0,0.0")
-        self._grip_stable_pos = get_env_ndarray("GRIP_STABLE_POS", "0.5")
-        self._arm_kp = get_env_ndarray("ARM_KP",
+        self.__grip_stable_pos = get_env_ndarray("GRIP_STABLE_POS", "0.5")
+        self.__arm_kp = get_env_ndarray("ARM_KP",
                                        "200.0,200.0,250.0,150.0,100.0,100.0")
-        self._arm_kd = get_env_ndarray("ARM_KD", "5.0,5.0,5.0,5.0,2.0,2.0")
-        self._grip_kp = get_env_ndarray("GRIP_KP", "10.0")
-        self._grip_kd = get_env_ndarray("GRIP_KD", "0.5")
-        self._arrive_threshold = get_env_float("ARRIVE_THRESHOLD", 0.06)
-        self._err_threshold = get_env_float("ERR_THRESHOLD", 0.02)
+        self.__arm_kd = get_env_ndarray("ARM_KD", "5.0,5.0,5.0,5.0,2.0,2.0")
+        self.__grip_kp = get_env_ndarray("GRIP_KP", "10.0")
+        self.__grip_kd = get_env_ndarray("GRIP_KD", "0.5")
+        self.__arrive_threshold = get_env_float("ARRIVE_THRESHOLD", 0.06)
+        self.__err_threshold = get_env_float("ERR_THRESHOLD", 0.02)
 
     def __init_pubs(self):
         self.__node.create_pub("arm_ctrl")
@@ -103,25 +103,25 @@ class HexFlowTemplateArcherY6:
     def __init_process(self):
         try:
             self.__node.info(f"[{self.__name}]: move to init position")
-            rate = HexRate(self._rate_hz)
+            rate = HexRate(self.__rate_hz)
             while self.__node.is_working():
                 rate.sleep()
 
                 data = self.__node.get("arm_state", latest=True)
                 if data is not None:
                     state = parse_hex_arm_state(data)
-                    err = self._arm_stable_pos - state["jnt_pos"]
-                    if np.fabs(err).max() < self._arrive_threshold:
+                    err = self.__arm_stable_pos - state["jnt_pos"]
+                    if np.fabs(err).max() < self.__arrive_threshold:
                         break
                     self.__node.pub(
                         "arm_ctrl",
                         build_hex_arm_ctrl(
                             ts_ns=ns_now(),
                             ctrl_mode=HexArmCtrlMode.pos,
-                            jnt_pos=self._arm_stable_pos,
-                            mit_kp=self._arm_kp,
-                            mit_kd=self._arm_kd,
-                            lim_err=self._err_threshold,
+                            jnt_pos=self.__arm_stable_pos,
+                            mit_kp=self.__arm_kp,
+                            mit_kd=self.__arm_kd,
+                            lim_err=self.__err_threshold,
                         ),
                     )
                     self.__node.pub(
@@ -129,10 +129,10 @@ class HexFlowTemplateArcherY6:
                         build_hex_grip_ctrl(
                             ts_ns=ns_now(),
                             ctrl_mode=HexGripCtrlMode.pos,
-                            jnt_pos=self._grip_stable_pos,
-                            mit_kp=self._grip_kp,
-                            mit_kd=self._grip_kd,
-                            lim_err=self._err_threshold,
+                            jnt_pos=self.__grip_stable_pos,
+                            mit_kp=self.__grip_kp,
+                            mit_kd=self.__grip_kd,
+                            lim_err=self.__err_threshold,
                         ),
                     )
         except Exception:
@@ -141,25 +141,25 @@ class HexFlowTemplateArcherY6:
     def __exit_process(self):
         try:
             self.__node.info(f"[{self.__name}]: move to exit position")
-            rate = HexRate(self._rate_hz)
+            rate = HexRate(self.__rate_hz)
             while self.__node.is_working():
                 rate.sleep()
 
                 data = self.__node.get("arm_state", latest=True)
                 if data is not None:
                     state = parse_hex_arm_state(data)
-                    err = self._arm_stable_pos - state["jnt_pos"]
-                    if np.fabs(err).max() < self._arrive_threshold:
+                    err = self.__arm_stable_pos - state["jnt_pos"]
+                    if np.fabs(err).max() < self.__arrive_threshold:
                         break
                     self.__node.pub(
                         "arm_ctrl",
                         build_hex_arm_ctrl(
                             ts_ns=ns_now(),
                             ctrl_mode=HexArmCtrlMode.pos,
-                            jnt_pos=self._arm_stable_pos,
-                            mit_kp=self._arm_kp,
-                            mit_kd=self._arm_kd,
-                            lim_err=self._err_threshold,
+                            jnt_pos=self.__arm_stable_pos,
+                            mit_kp=self.__arm_kp,
+                            mit_kd=self.__arm_kd,
+                            lim_err=self.__err_threshold,
                         ),
                     )
                     self.__node.pub(
@@ -167,10 +167,10 @@ class HexFlowTemplateArcherY6:
                         build_hex_grip_ctrl(
                             ts_ns=ns_now(),
                             ctrl_mode=HexGripCtrlMode.pos,
-                            jnt_pos=self._grip_stable_pos,
-                            mit_kp=self._grip_kp,
-                            mit_kd=self._grip_kd,
-                            lim_err=self._err_threshold,
+                            jnt_pos=self.__grip_stable_pos,
+                            mit_kp=self.__grip_kp,
+                            mit_kd=self.__grip_kd,
+                            lim_err=self.__err_threshold,
                         ),
                     )
         except Exception:
@@ -178,7 +178,7 @@ class HexFlowTemplateArcherY6:
 
     def __work_process(self):
         self.__node.info(f"[{self.__name}]: Start")
-        rate = HexRate(self._rate_hz)
+        rate = HexRate(self.__rate_hz)
         while self.__is_running():
             rate.sleep()
 
