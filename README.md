@@ -200,8 +200,6 @@ nodes = {
         remap_dict={
             "arm_state": "robot_archer_y6/arm_state",
             "grip_state": "robot_archer_y6/grip_state",
-            "arm_ctrl": "robot_archer_y6/arm_ctrl",
-            "grip_ctrl": "robot_archer_y6/grip_ctrl",
             "record": "comp_archer_y6/record",
         },
     ),
@@ -293,8 +291,6 @@ nodes = {
         remap_dict={
             "arm_state": "mujoco_archer_y6/arm_state",
             "grip_state": "mujoco_archer_y6/grip_state",
-            "arm_ctrl": "mujoco_archer_y6/arm_ctrl",
-            "grip_ctrl": "mujoco_archer_y6/grip_ctrl",
             "record": "comp_archer_y6/record",
         },
     ),
@@ -412,8 +408,6 @@ nodes:
     remap:
       arm_state: robot_archer_y6/arm_state
       grip_state: robot_archer_y6/grip_state
-      arm_ctrl: robot_archer_y6/arm_ctrl
-      grip_ctrl: robot_archer_y6/grip_ctrl
       record: comp_archer_y6/record
     env:
       RECORD_PATH: "example/record_data"
@@ -488,8 +482,6 @@ nodes:
     remap:
       arm_state: mujoco_archer_y6/arm_state
       grip_state: mujoco_archer_y6/grip_state
-      arm_ctrl: mujoco_archer_y6/arm_ctrl
-      grip_ctrl: mujoco_archer_y6/grip_ctrl
       record: comp_archer_y6/record
     env:
       RECORD_PATH: "example/record_data"

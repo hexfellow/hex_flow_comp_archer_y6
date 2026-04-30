@@ -86,8 +86,6 @@ nodes = {
         remap_dict={
             "arm_state": "robot_archer_y6/arm_state",
             "grip_state": "robot_archer_y6/grip_state",
-            "arm_ctrl": "robot_archer_y6/arm_ctrl",
-            "grip_ctrl": "robot_archer_y6/grip_ctrl",
             "record": "comp_archer_y6/record",
         },
     ),
